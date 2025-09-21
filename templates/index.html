@@ -1,0 +1,63 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>PR AI Reviewer</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.1/dist/css/bootstrap.min.css" rel="stylesheet">
+    <style>
+        body {
+            padding-top: 50px;
+            background-color: #f8f9fa;
+        }
+        .container {
+            max-width: 900px;
+            background-color: #fff;
+            padding: 30px;
+            border-radius: 12px;
+            box-shadow: 0 4px 10px rgba(0,0,0,0.1);
+        }
+        .review-block {
+            background-color: #f1f3f5;
+            padding: 15px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+            white-space: pre-wrap;
+        }
+        .filename {
+            font-weight: bold;
+            margin-bottom: 8px;
+        }
+        .form-label {
+            font-weight: 500;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h2 class="mb-4 text-center">PR AI Reviewer</h2>
+        <form method="POST">
+            <div class="mb-3">
+                <label for="repo_url" class="form-label">Repository URL:</label>
+                <input type="url" class="form-control" id="repo_url" name="repo_url" placeholder="https://github.com/user/repo" required>
+            </div>
+            <div class="mb-3">
+                <label for="pr_number" class="form-label">Pull Request Number:</label>
+                <input type="number" class="form-control" id="pr_number" name="pr_number" placeholder="e.g., 5" required>
+            </div>
+            <button type="submit" class="btn btn-primary w-100">Review PR</button>
+        </form>
+
+        {% if feedback %}
+        <hr class="my-4">
+        <h4 class="mb-3">Review Feedback:</h4>
+        {% for f in feedback %}
+            <div class="review-block">
+                <div class="filename">{{ f.filename }}</div>
+                <div class="review-text">{{ f.review_text }}</div>
+            </div>
+        {% endfor %}
+        {% endif %}
+    </div>
+</body>
+</html>

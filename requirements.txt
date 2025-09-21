@@ -1,0 +1,4 @@
+Flask
+google-genai
+PyGithub   # Or GitLab/Bitbucket client if needed
+diff2html  # Optional if using JS diff rendering
