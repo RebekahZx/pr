@@ -9,7 +9,7 @@ load_dotenv()
 
 app = Flask(__name__)
 
-# Initialize AI reviewer with API key from .env
+# Initialize AI reviewer with Gemini API key from .env
 GEMINI_API_KEY = os.environ.get("GEMINI_API_KEY")
 if not GEMINI_API_KEY:
     raise RuntimeError("GEMINI_API_KEY not found in .env")
@@ -25,7 +25,7 @@ def index():
         repo_url = request.form.get("repo_url")
         pr_number = request.form.get("pr_number")
 
-        # Basic validation
+        # Input validation
         if not repo_url or not pr_number:
             error = "Please provide both repository URL and PR number."
             return render_template("index.html", feedback=[], error=error)
@@ -45,7 +45,7 @@ def index():
             fetcher = PRFetcher(repo_url, token=GITHUB_TOKEN)
             changes = fetcher.get_pr_diff(pr_number)
 
-            # Review each file patch
+            # Review each file patch using Gemini AI
             for c in changes:
                 patch = c.get("patch", "")
                 if patch.strip():
@@ -54,11 +54,12 @@ def index():
                         "filename": c["filename"],
                         "review_text": review_text
                     })
+
         except Exception as e:
             error = f"Error fetching or reviewing PR: {str(e)}"
 
     return render_template("index.html", feedback=feedback, error=error)
 
-
 if __name__ == "__main__":
+    # For development only. Use Gunicorn/Waitress for production.
     app.run(debug=True)
