@@ -37,3 +37,12 @@ class AIReviewer:
 
         # Combine feedback for all chunks
         return "\n---\n".join(feedback_chunks)
+
+    def review_prompt(self, prompt_text):
+        """Send an already-assembled prompt straight to the model (used by the RAG
+        reviewer, which builds its own hunk + retrieved-context prompt)."""
+        response = self.client.models.generate_content(
+            model="gemini-2.5-flash",
+            contents=prompt_text,
+        )
+        return response.text
