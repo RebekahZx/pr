@@ -20,11 +20,17 @@ def index_changed_files(
 ) -> None:
     """Chunk + embed + upsert the current (post-change) content of each changed file.
 
-    Removed files are dropped from the index instead of re-embedded.
+    Removed files are dropped from the index instead of re-embedded, and a
+    renamed file's chunks under its previous path are dropped too, so retrieval
+    never returns code from a path that no longer exists.
     """
     for f in changed_files:
         file_path = f["filename"]
         status = f.get("status", "modified")
+
+        previous = f.get("previous_filename")
+        if status == "renamed" and previous and previous != file_path:
+            store.upsert_file(previous, [], embeddings=None)
 
         if status == "removed":
             store.upsert_file(file_path, [], embeddings=None)

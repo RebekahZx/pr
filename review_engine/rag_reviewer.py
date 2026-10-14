@@ -7,7 +7,7 @@ from .ai_reviewer import AIReviewer
 from .rag.diff_utils import parse_patch
 from .rag.embeddings import Embedder
 from .rag.indexer import index_changed_files
-from .rag.prompt_builder import build_review_prompt
+from .rag.prompt_builder import build_review_prompt, count_tokens
 from .rag.retriever import Retriever
 from .rag.tracker import ReviewTracker
 from .rag.vector_store import RepoVectorStore
@@ -60,7 +60,7 @@ class RAGReviewer:
                     continue
 
                 start_time = time.monotonic()
-                retrieved = retriever.retrieve(query_text)
+                retrieved = retriever.retrieve(query_text, exclude=(filename, hunk.new_start, hunk.new_end))
                 prompt = build_review_prompt(filename, hunk.raw_text, retrieved, style_notes)
                 review_text = self.ai_reviewer.review_prompt(prompt)
                 latency = time.monotonic() - start_time
@@ -73,7 +73,7 @@ class RAGReviewer:
                     pr_number=pr_number,
                     filename=filename,
                     model="gemini-2.5-flash",
-                    prompt_tokens=len(prompt) // 4,
+                    prompt_tokens=count_tokens(prompt),
                     retrieved_chunk_ids=retrieved_chunk_ids,
                     latency_seconds=latency,
                 )

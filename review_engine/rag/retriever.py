@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import os
 import re
-from typing import List
+from typing import List, Optional, Tuple
 
 from .embeddings import Embedder
 from .vector_store import RepoVectorStore
@@ -54,17 +54,40 @@ class Retriever:
             use_bm25_rerank = os.environ.get("RAG_USE_BM25_RERANK", "true").lower() != "false"
         self.use_bm25_rerank = use_bm25_rerank
 
-    def retrieve(self, query_text: str, top_k: int = TOP_K) -> List[dict]:
+    def retrieve(
+        self,
+        query_text: str,
+        top_k: int = TOP_K,
+        exclude: Optional[Tuple[str, int, int]] = None,
+    ) -> List[dict]:
+        """Top-k context chunks for `query_text`.
+
+        `exclude=(file_path, start_line, end_line)` drops chunks that overlap the
+        hunk being reviewed: the changed code is itself indexed, so without this
+        the best "context" match is usually the hunk itself, wasting a slot.
+        """
         if not query_text.strip():
             return []
 
         query_embedding = self.embedder.embed_one(query_text)
-        pool_size = CANDIDATE_POOL if self.use_bm25_rerank else top_k
+        pool_size = CANDIDATE_POOL if (self.use_bm25_rerank or exclude) else top_k
         raw = self.store.search(query_embedding, top_k=pool_size)
         if not raw:
             return []
 
         candidates = [{"meta": meta, "cosine": score} for meta, score in raw]
+        if exclude is not None:
+            ex_path, ex_start, ex_end = exclude
+            candidates = [
+                c for c in candidates
+                if not (
+                    c["meta"]["file_path"] == ex_path
+                    and c["meta"]["start_line"] <= ex_end
+                    and c["meta"]["end_line"] >= ex_start
+                )
+            ]
+            if not candidates:
+                return []
 
         if self.use_bm25_rerank and len(candidates) > 1:
             candidates = _bm25_rerank(query_text, candidates)
