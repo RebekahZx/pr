@@ -20,7 +20,9 @@ class GitHubFetcher(BasePRFetcher):
                 "patch": f.patch or "",
                 "additions": f.additions,
                 "deletions": f.deletions,
-                "status": f.status
+                "status": f.status,
+                # Set by GitHub for renamed files; lets the indexer drop the old path.
+                "previous_filename": getattr(f, "previous_filename", None),
             })
         return diff_list
 

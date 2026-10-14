@@ -21,10 +21,14 @@ INSTRUCTIONS = (
 )
 
 
-def _token_len(text: str) -> int:
+def count_tokens(text: str) -> int:
+    """cl100k token count (falls back to a len/4 estimate if tiktoken is unavailable)."""
     if _ENCODER is None:
         return max(1, len(text) // 4)
     return len(_ENCODER.encode(text, disallowed_special=()))
+
+
+_token_len = count_tokens
 
 
 def build_review_prompt(

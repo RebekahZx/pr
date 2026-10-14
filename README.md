@@ -1,5 +1,7 @@
 # PR Review Agent (RAG)
 
+[![tests](https://github.com/RebekahZx/pr/actions/workflows/test.yml/badge.svg)](https://github.com/RebekahZx/pr/actions/workflows/test.yml)
+
 An AI PR reviewer that grounds its comments in the actual codebase, not just the
 raw diff. For each changed file it chunks the code at function/class boundaries
 (via `tree-sitter`), embeds and indexes those chunks per repo (local FAISS), then
@@ -103,6 +105,48 @@ way it would on a long-running server — so today every review effectively
 re-embeds the PR's changed files. Fine for a demo/low-traffic repo; for
 heavier use, back `RAG_INDEX_DIR` with a persistent volume or move indexing to
 a long-running worker instead of a serverless function.
+
+## Tests
+
+```bash
+pip install pytest
+python -m pytest -q tests
+```
+
+The suite runs offline: embeddings, the LLM and GitHub are replaced by small
+deterministic fakes, so it checks the pipeline's own logic without API keys:
+
+- diff parsing (hunk ranges, omitted counts, "no newline" markers)
+- AST chunking at function/method boundaries, module-level code kept, and the
+  fixed-window fallback for unsupported file types
+- FAISS index upsert/replace/persist, retrieval ranking, BM25 rerank path
+- removed and renamed files leave no stale chunks in the index
+- prompt token budget (highest-ranked context first, never over budget)
+- end-to-end review of a PR with fake fetcher/embedder/LLM
+- webhook HMAC verification (missing/wrong signature rejected; no secret
+  configured ⇒ all webhooks refused)
+
+CI runs the suite on every push and pull request.
+
+## Design notes
+
+- **The hunk under review is excluded from its own context.** Changed files are
+  indexed before retrieval, so the closest match for a hunk is usually the hunk
+  itself. Chunks overlapping the hunk's lines are filtered out, leaving all
+  `top_k` slots for other code (callers, related functions).
+- **Renames don't leave stale context.** When GitHub reports a file as renamed,
+  its chunks under the previous path are removed from the index.
+- **Token counts are real counts.** Tracking logs the prompt's `cl100k` token
+  count, the same tokenizer used for the prompt budget.
+
+## Known limitations
+
+- The webhook handler reviews synchronously. GitHub gives up waiting on a
+  webhook delivery after about 10 seconds, so large PRs show as a failed
+  delivery even when the review completes. A queue/worker would fix this.
+- GitHub rejects a whole review if any inline comment targets a line outside
+  the diff; comments are anchored to the hunk's last new-file line to stay
+  inside it.
 
 ## Offline eval / tracking
 
